@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bàn Trộn Giọng — Hạ trầm giọng lồng tiếng</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/lamejs/1.2.0/lame.min.js"></script>
+<style>
+  :root{
+    --bg:#14110f; --panel:#1c1815; --panel-2:#232019; --line:#332c24;
+    --amber:#e8a33d; --amber-dim:#8a6a2f; --red:#c1443c; --text:#f2ede4;
+    --muted:#9a8f82; --green:#7fae6a;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:radial-gradient(ellipse 1200px 600px at 50% -10%, #241d16 0%, var(--bg) 60%);
+    color:var(--text); font-family:'Inter',sans-serif; min-height:100vh; padding:40px 20px 80px;
+  }
+  .wrap{max-width:760px;margin:0 auto;}
+  header{margin-bottom:36px;}
+  .eyebrow{font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:0.18em;text-transform:uppercase;color:var(--amber);margin-bottom:10px;}
+  h1{font-family:'Fraunces',serif;font-weight:600;font-size:clamp(28px,5vw,42px);margin:0 0 10px;line-height:1.08;}
+  p.sub{color:var(--muted);font-size:15px;max-width:56ch;line-height:1.6;margin:0;}
+  .panel{background:linear-gradient(180deg,var(--panel-2),var(--panel));border:1px solid var(--line);border-radius:14px;padding:28px;margin-top:24px;box-shadow:0 20px 50px -30px rgba(0,0,0,0.7);}
+  #dropzone{border:1.5px dashed var(--line);border-radius:10px;padding:36px 20px;text-align:center;cursor:pointer;transition:border-color .15s, background .15s;}
+  #dropzone:hover, #dropzone.drag{border-color:var(--amber-dim);background:rgba(232,163,61,0.04);}
+  #dropzone .icon{font-size:28px;margin-bottom:10px;opacity:.8;}
+  #dropzone .label{font-size:14px;color:var(--text);margin-bottom:4px;}
+  #dropzone .hint{font-size:12px;color:var(--muted);font-family:'IBM Plex Mono',monospace;}
+  #fileInput{display:none;}
+  .filebar{display:none;align-items:center;justify-content:space-between;gap:12px;font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--text);padding:12px 14px;background:var(--panel-2);border:1px solid var(--line);border-radius:8px;margin-bottom:18px;}
+  .filebar .name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .filebar .kind{color:var(--amber);margin-right:8px;}
+  .filebar button{background:none;border:none;color:var(--muted);cursor:pointer;font-size:12px;font-family:'IBM Plex Mono',monospace;text-decoration:underline;}
+  canvas#wave{display:none;width:100%;height:80px;border-radius:8px;background:var(--panel-2);border:1px solid var(--line);margin-bottom:24px;}
+  .console{display:none;gap:28px;margin-bottom:22px;flex-wrap:wrap;}
+  .channel{flex:1;min-width:200px;}
+  .channel-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px;}
+  .channel-head .name{font-size:13px;font-weight:600;letter-spacing:.02em;}
+  .channel-head .val{font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--amber);}
+  input[type=range]{-webkit-appearance:none;width:100%;height:4px;border-radius:3px;background:linear-gradient(90deg,var(--amber-dim),var(--line));outline:none;}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:var(--amber);border:2px solid #1c1815;box-shadow:0 0 0 1px var(--amber-dim);cursor:pointer;margin-top:-6px;}
+  input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;background:var(--amber);border:2px solid #1c1815;cursor:pointer;}
+  .channel .desc{font-size:11px;color:var(--muted);margin-top:8px;line-height:1.5;}
+  .fmt-row{display:none;align-items:center;gap:16px;margin-bottom:18px;font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--muted);}
+  .fmt-row label{display:flex;align-items:center;gap:6px;cursor:pointer;}
+  .fmt-row input[type=radio]{accent-color:var(--amber);}
+  #processBtn{display:none;width:100%;padding:15px;border:none;border-radius:9px;background:var(--amber);color:#221704;font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:600;letter-spacing:.04em;cursor:pointer;transition:filter .15s, transform .1s;}
+  #processBtn:hover{filter:brightness(1.08);}
+  #processBtn:active{transform:scale(0.99);}
+  #processBtn:disabled{opacity:.6;cursor:wait;}
+  #status{display:none;font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--muted);text-align:center;margin-top:12px;}
+  #status .dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--green);margin-right:6px;animation:pulse 1s infinite ease-in-out;}
+  @keyframes pulse{0%,100%{opacity:.3}50%{opacity:1}}
+  #progressBar{display:none;height:4px;border-radius:2px;background:var(--line);margin-top:10px;overflow:hidden;}
+  #progressFill{height:100%;width:0%;background:var(--amber);transition:width .15s;}
+  #results{display:none;margin-top:28px;}
+  .compare{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;}
+  @media(max-width:560px){.compare{grid-template-columns:1fr;}}
+  .clip{background:var(--panel-2);border:1px solid var(--line);border-radius:10px;padding:16px;}
+  .clip .tag{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;}
+  .clip.after .tag{color:var(--amber);}
+  audio{width:100%;height:34px;}
+  video{width:100%;border-radius:6px;display:block;background:#000;}
+  .downloads{display:flex;flex-direction:column;gap:10px;}
+  .dl-btn{
+    display:flex;align-items:center;justify-content:center;gap:8px;
+    width:100%;padding:14px;border-radius:9px;
+    font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:600;letter-spacing:.04em;
+    text-align:center;text-decoration:none;cursor:pointer;
+  }
+  .dl-btn.primary{border:none;background:var(--amber);color:#221704;}
+  .dl-btn.primary:hover{filter:brightness(1.08);}
+  .dl-btn.secondary{border:1px solid var(--line);background:transparent;color:var(--text);}
+  .dl-btn.secondary:hover{border-color:var(--amber-dim);background:rgba(232,163,61,0.05);}
+  .dl-btn[hidden]{display:none;}
+  #fallbackNote{display:none;font-size:12px;color:var(--red);margin-top:12px;line-height:1.6;}
+  footer{margin-top:28px;font-size:12px;color:var(--muted);line-height:1.7;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Voice booth · xử lý cục bộ trong trình duyệt</div>
+    <h1>Bàn trộn giọng</h1>
+    <p class="sub">Đưa file thu âm (hoặc video đã lồng tiếng) vào, kéo fader để hạ trầm giọng theo cao độ thật — giữ nguyên tốc độ nói. Không gửi file lên server nào, mọi thứ xử lý ngay trên máy bạn.</p>
+  </header>
+
+  <div class="panel">
+    <div id="dropzone">
+      <div class="icon">🎙</div>
+      <div class="label">Kéo thả file vào đây, hoặc bấm để chọn</div>
+      <div class="hint">.mp3 .wav .m4a .ogg — hoặc video .mp4 .mov .webm</div>
+      <input type="file" id="fileInput" accept="audio/*,video/*">
+    </div>
+
+    <div class="filebar" id="filebar">
+      <span><span class="kind" id="fileKind"></span><span class="name" id="fileName"></span></span>
+      <button id="clearBtn">đổi file khác</button>
+    </div>
+
+    <canvas id="wave"></canvas>
+
+    <div class="console" id="console">
+      <div class="channel">
+        <div class="channel-head"><span class="name">Độ trầm</span><span class="val" id="semitoneVal">-3 st</span></div>
+        <input type="range" id="semitone" min="-8" max="-1" step="1" value="-3">
+        <div class="desc">Hạ cao độ theo semitone. -2/-3 tự nhiên cho giọng chưa vỡ; -5 trở lên nghe rõ trầm nhưng dễ lộ.</div>
+      </div>
+      <div class="channel">
+        <div class="channel-head"><span class="name">Ấm giọng</span><span class="val" id="warmthVal">40%</span></div>
+        <input type="range" id="warmth" min="0" max="100" step="5" value="40">
+        <div class="desc">Tăng nhẹ dải trầm/trung, giảm the ở dải cao để giọng nghe dày và đỡ mỏng hơn.</div>
+      </div>
+    </div>
+
+    <div class="fmt-row" id="fmtRow">
+      <span>Định dạng âm thanh:</span>
+      <label><input type="radio" name="fmt" value="mp3" checked> MP3 (nhẹ, phổ biến)</label>
+      <label><input type="radio" name="fmt" value="wav"> WAV (không nén, nặng hơn)</label>
+    </div>
+
+    <button id="processBtn">▶ XỬ LÝ GIỌNG</button>
+    <div id="status"><span class="dot"></span><span id="statusText">Đang xử lý…</span></div>
+    <div id="progressBar"><div id="progressFill"></div></div>
+
+    <div id="results">
+      <div class="compare">
+        <div class="clip before"><div class="tag">Gốc</div><div id="beforeSlot"></div></div>
+        <div class="clip after"><div class="tag">Đã hạ trầm</div><div id="afterSlot"></div></div>
+      </div>
+      <div class="downloads">
+        <a id="downloadVideoBtn" class="dl-btn primary" hidden download>⬇ TẢI VIDEO (.webm)</a>
+        <a id="downloadAudioBtn" class="dl-btn primary" download>⬇ TẢI ÂM THANH</a>
+      </div>
+      <div id="fallbackNote"></div>
+    </div>
+  </div>
+
+  <footer>
+    Xử lý hoàn toàn trong trình duyệt của bạn — file không được gửi lên server nào (MP3 cũng được mã hoá tại chỗ, chỉ có thư viện mã hoá là tải từ CDN công khai khi mở trang). Với video, quá trình ghép hình lại mất thời gian tương đương độ dài video. Nên dùng Chrome hoặc Firefox trên máy tính để mượt nhất.
+  </footer>
+</div>
+
+<script>
+const dropzone = document.getElementById('dropzone');
+const fileInput = document.getElementById('fileInput');
+const filebar = document.getElementById('filebar');
+const fileNameEl = document.getElementById('fileName');
+const fileKindEl = document.getElementById('fileKind');
+const clearBtn = document.getElementById('clearBtn');
+const waveCanvas = document.getElementById('wave');
+const consoleEl = document.getElementById('console');
+const fmtRow = document.getElementById('fmtRow');
+const processBtn = document.getElementById('processBtn');
+const statusEl = document.getElementById('status');
+const statusText = document.getElementById('statusText');
+const progressBar = document.getElementById('progressBar');
+const progressFill = document.getElementById('progressFill');
+const resultsEl = document.getElementById('results');
+const semitoneSlider = document.getElementById('semitone');
+const semitoneVal = document.getElementById('semitoneVal');
+const warmthSlider = document.getElementById('warmth');
+const warmthVal = document.getElementById('warmthVal');
+const beforeSlot = document.getElementById('beforeSlot');
+const afterSlot = document.getElementById('afterSlot');
+const downloadVideoBtn = document.getElementById('downloadVideoBtn');
+const downloadAudioBtn = document.getElementById('downloadAudioBtn');
+const fallbackNote = document.getElementById('fallbackNote');
+
+let audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+let originalBuffer = null;
+let originalFile = null;
+let isVideo = false;
+
+semitoneSlider.oninput = () => semitoneVal.textContent = semitoneSlider.value + ' st';
+warmthSlider.oninput = () => warmthVal.textContent = warmthSlider.value + '%';
+
+dropzone.addEventListener('click', () => fileInput.click());
+dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('drag'); });
+dropzone.addEventListener('dragleave', () => dropzone.classList.remove('drag'));
+dropzone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropzone.classList.remove('drag');
+  if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener('change', e => { if (e.target.files[0]) handleFile(e.target.files[0]); });
+clearBtn.addEventListener('click', resetAll);
+
+function resetAll(){
+  originalBuffer = null; originalFile = null; isVideo = false;
+  fileInput.value = '';
+  filebar.style.display = 'none';
+  waveCanvas.style.display = 'none';
+  consoleEl.style.display = 'none';
+  fmtRow.style.display = 'none';
+  processBtn.style.display = 'none';
+  resultsEl.style.display = 'none';
+  fallbackNote.style.display = 'none';
+  dropzone.style.display = 'block';
+}
+
+async function handleFile(file){
+  originalFile = file;
+  isVideo = file.type.startsWith('video/') || /\.(mp4|mov|webm|mkv|avi)$/i.test(file.name);
+  fileKindEl.textContent = isVideo ? '[VIDEO]' : '[ÂM THANH]';
+  fileNameEl.textContent = file.name;
+  filebar.style.display = 'flex';
+  dropzone.style.display = 'none';
+  resultsEl.style.display = 'none';
+  fallbackNote.style.display = 'none';
+
+  try{
+    const arrayBuffer = await file.arrayBuffer();
+    originalBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+  }catch(err){
+    alert('Không đọc được phần âm thanh trong file này. Thử một file mp4 chuẩn (H.264/AAC) hoặc file âm thanh riêng (wav/mp3).');
+    resetAll();
+    return;
+  }
+
+  drawWave(originalBuffer, waveCanvas);
+  waveCanvas.style.display = 'block';
+  consoleEl.style.display = 'flex';
+  fmtRow.style.display = 'flex';
+  processBtn.style.display = 'block';
+  processBtn.textContent = '▶ XỬ LÝ GIỌNG';
+
+  if (typeof lamejs === 'undefined'){
+    document.querySelector('.fmt-row label:first-child input').disabled = true;
+    document.querySelector('.fmt-row').title = 'Không tải được bộ mã hoá MP3 (có thể do mất mạng) — dùng WAV.';
+    document.querySelector('input[name=fmt][value=wav]').checked = true;
+  }
+
+  beforeSlot.innerHTML = '';
+  if (isVideo){
+    const v = document.createElement('video');
+    v.controls = true;
+    v.src = URL.createObjectURL(file);
+    beforeSlot.appendChild(v);
+  } else {
+    const a = document.createElement('audio');
+    a.controls = true;
+    a.src = URL.createObjectURL(file);
+    beforeSlot.appendChild(a);
+  }
+}
+
+function drawWave(buffer, canvas){
+  const dpr = window.devicePixelRatio || 1;
+  const w = canvas.clientWidth || 700, h = 80;
+  canvas.width = w*dpr; canvas.height = h*dpr;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0,0,w,h);
+  const data = buffer.getChannelData(0);
+  const step = Math.ceil(data.length/w);
+  ctx.fillStyle = '#e8a33d';
+  const mid = h/2;
+  for (let i=0;i<w;i++){
+    let min=1, max=-1;
+    for (let j=0;j<step;j++){
+      const idx=i*step+j;
+      if (idx>=data.length) break;
+      const v=data[idx];
+      if (v<min) min=v;
+      if (v>max) max=v;
+    }
+    const y1=mid+min*mid*0.9, y2=mid+max*mid*0.9;
+    ctx.fillRect(i, y1, 1, Math.max(1,y2-y1));
+  }
+}
+
+// ---------- DSP: WSOLA time-stretch + resample pitch shift ----------
+function hannWindow(n){
+  const w = new Float32Array(n);
+  for (let i=0;i<n;i++) w[i] = 0.5 - 0.5*Math.cos((2*Math.PI*i)/(n-1));
+  return w;
+}
+function timeStretchWSOLA(input, factor){
+  const frameSize=2048, synHop=512;
+  const anaHop = Math.max(1, Math.round(synHop/factor));
+  const win = hannWindow(frameSize);
+  const searchRange=100, corrLen=512;
+  const outLenTarget = Math.max(frameSize, Math.floor(input.length*factor));
+  const bufLen = outLenTarget + frameSize;
+  const output = new Float32Array(bufLen);
+  const weight = new Float32Array(bufLen);
+  let outPos=0, anaPos=0, firstFrame=true;
+  while (anaPos+frameSize < input.length && outPos+frameSize < bufLen){
+    let bestPos = anaPos;
+    if (!firstFrame){
+      const tailStart = outPos;
+      let bestScore = -Infinity;
+      const lo = Math.max(0, anaPos-searchRange);
+      const hi = Math.min(input.length-frameSize, anaPos+searchRange);
+      for (let cand=lo; cand<=hi; cand++){
+        let score=0;
+        const cl = Math.min(corrLen, bufLen-tailStart, input.length-cand);
+        for (let i=0;i<cl;i++) score += output[tailStart+i]*input[cand+i];
+        if (score > bestScore){ bestScore=score; bestPos=cand; }
+      }
+    }
+    firstFrame=false;
+    for (let i=0;i<frameSize;i++){
+      if (bestPos+i<input.length && outPos+i<bufLen){
+        output[outPos+i] += input[bestPos+i]*win[i];
+        weight[outPos+i] += win[i];
+      }
+    }
+    outPos += synHop;
+    anaPos = bestPos + anaHop;
+  }
+  for (let i=0;i<bufLen;i++){ if (weight[i]>1e-6) output[i] /= weight[i]; }
+  return output.slice(0, outLenTarget);
+}
+function resampleLinear(input, step){
+  const outLen = Math.floor(input.length/step);
+  const output = new Float32Array(outLen);
+  let pos=0;
+  for (let i=0;i<outLen;i++){
+    const idx=Math.floor(pos), frac=pos-idx;
+    const a=input[idx]||0, b=input[idx+1]||a;
+    output[i]=a+(b-a)*frac;
+    pos+=step;
+  }
+  return output;
+}
+function pitchShiftChannel(input, semitones){
+  const ratio = Math.pow(2, semitones/12);
+  const stretched = timeStretchWSOLA(input, ratio);
+  return resampleLinear(stretched, ratio);
+}
+
+async function buildProcessedAudioBuffer(semitones, warmth){
+  const numChannels = originalBuffer.numberOfChannels;
+  const sr = originalBuffer.sampleRate;
+  const shiftedChannels = [];
+  let minLen = Infinity;
+
+  for (let ch=0; ch<numChannels; ch++){
+    const data = originalBuffer.getChannelData(ch);
+    const shifted = pitchShiftChannel(data, semitones);
+    shiftedChannels.push(shifted);
+    minLen = Math.min(minLen, shifted.length);
+    await new Promise(r => setTimeout(r, 0));
+  }
+
+  statusText.textContent = 'Đang làm ấm giọng…';
+  await new Promise(r => setTimeout(r, 20));
+
+  const pitchedBuffer = audioCtx.createBuffer(numChannels, minLen, sr);
+  for (let ch=0; ch<numChannels; ch++){
+    pitchedBuffer.copyToChannel(shiftedChannels[ch].slice(0, minLen), ch);
+  }
+
+  const offlineCtx = new OfflineAudioContext(numChannels, minLen, sr);
+  const src = offlineCtx.createBufferSource();
+  src.buffer = pitchedBuffer;
+
+  const lowShelf = offlineCtx.createBiquadFilter();
+  lowShelf.type = 'lowshelf'; lowShelf.frequency.value = 220;
+  lowShelf.gain.value = (warmth/100)*6;
+
+  const presence = offlineCtx.createBiquadFilter();
+  presence.type = 'peaking'; presence.frequency.value = 500; presence.Q.value = 0.9;
+  presence.gain.value = (warmth/100)*2.5;
+
+  const highShelf = offlineCtx.createBiquadFilter();
+  highShelf.type = 'highshelf'; highShelf.frequency.value = 5500;
+  highShelf.gain.value = -(warmth/100)*4;
+
+  src.connect(lowShelf).connect(presence).connect(highShelf).connect(offlineCtx.destination);
+  src.start();
+
+  return await offlineCtx.startRendering();
+}
+
+function pickSupportedMime(){
+  const candidates = ['video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm'];
+  for (const c of candidates){
+    if (window.MediaRecorder && MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(c)) return c;
+  }
+  return null;
+}
+
+async function renderVideoWithNewAudio(file, finalAudioBuffer){
+  return new Promise((resolve, reject) => {
+    const mime = pickSupportedMime();
+    if (!mime){ reject(new Error('no-mediarecorder')); return; }
+
+    const v = document.createElement('video');
+    v.muted = true;
+    v.playsInline = true;
+    v.src = URL.createObjectURL(file);
+
+    v.addEventListener('loadedmetadata', async () => {
+      const maxDim = 1280;
+      let w = v.videoWidth, h = v.videoHeight;
+      if (w > maxDim){ h = Math.round(h * (maxDim/w)); w = maxDim; }
+
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      const ctx = canvas.getContext('2d');
+
+      const canvasStream = canvas.captureStream(30);
+
+      const liveCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const dest = liveCtx.createMediaStreamDestination();
+      const srcNode = liveCtx.createBufferSource();
+      srcNode.buffer = finalAudioBuffer;
+      srcNode.connect(dest);
+
+      const combined = new MediaStream([
+        ...canvasStream.getVideoTracks(),
+        ...dest.stream.getAudioTracks()
+      ]);
+
+      const recorder = new MediaRecorder(combined, { mimeType: mime, videoBitsPerSecond: 4000000 });
+      const chunks = [];
+      recorder.ondataavailable = e => { if (e.data.size) chunks.push(e.data); };
+      recorder.onstop = () => resolve(new Blob(chunks, { type: 'video/webm' }));
+      recorder.onerror = e => reject(e.error || new Error('recorder-error'));
+
+      let drawing = true;
+      function drawLoop(){
+        if (!drawing) return;
+        if (!v.paused && !v.ended){
+          ctx.drawImage(v, 0, 0, w, h);
+          progressFill.style.width = Math.min(100, (v.currentTime / v.duration) * 100) + '%';
+        }
+        requestAnimationFrame(drawLoop);
+      }
+
+      function finish(){
+        if (!drawing) return;
+        drawing = false;
+        try{ srcNode.stop(); }catch(e){}
+        recorder.stop();
+        liveCtx.close();
+      }
+
+      v.addEventListener('ended', finish);
+      setTimeout(finish, (v.duration + 1.5) * 1000);
+
+      recorder.start(250);
+      progressBar.style.display = 'block';
+      statusText.textContent = 'Đang ghép video (real-time)…';
+      await v.play();
+      srcNode.start();
+      requestAnimationFrame(drawLoop);
+    }, { once: true });
+
+    v.addEventListener('error', () => reject(new Error('video-load-error')));
+  });
+}
+
+// ---------- WAV encoder (16-bit PCM) ----------
+function audioBufferToWav(buffer){
+  const numChannels = buffer.numberOfChannels;
+  const sampleRate = buffer.sampleRate;
+  const numFrames = buffer.length;
+
+  let peak = 0;
+  const chData = [];
+  for (let ch=0; ch<numChannels; ch++){
+    const d = buffer.getChannelData(ch);
+    chData.push(d);
+    for (let i=0;i<d.length;i++){
+      const a = Math.abs(d[i]);
+      if (a > peak) peak = a;
+    }
+  }
+  const gain = peak > 0.98 ? 0.98/peak : 1.0;
+
+  const bytesPerSample = 2;
+  const blockAlign = numChannels * bytesPerSample;
+  const dataSize = numFrames * blockAlign;
+  const bufferArr = new ArrayBuffer(44 + dataSize);
+  const view = new DataView(bufferArr);
+  function writeStr(offset, str){ for (let i=0;i<str.length;i++) view.setUint8(offset+i, str.charCodeAt(i)); }
+
+  writeStr(0,'RIFF'); view.setUint32(4, 36+dataSize, true); writeStr(8,'WAVE');
+  writeStr(12,'fmt '); view.setUint32(16,16,true); view.setUint16(20,1,true);
+  view.setUint16(22,numChannels,true); view.setUint32(24,sampleRate,true);
+  view.setUint32(28,sampleRate*blockAlign,true); view.setUint16(32,blockAlign,true);
+  view.setUint16(34,16,true); writeStr(36,'data'); view.setUint32(40,dataSize,true);
+
+  let offset = 44;
+  for (let i=0;i<numFrames;i++){
+    for (let ch=0; ch<numChannels; ch++){
+      let sample = chData[ch][i]*gain;
+      sample = Math.max(-1, Math.min(1, sample));
+      view.setInt16(offset, sample<0 ? sample*0x8000 : sample*0x7FFF, true);
+      offset += 2;
+    }
+  }
+  return new Blob([bufferArr], {type:'audio/wav'});
+}
+
+// ---------- MP3 encoder (via lamejs) ----------
+function floatTo16BitPCM(floatArr){
+  const out = new Int16Array(floatArr.length);
+  for (let i=0;i<floatArr.length;i++){
+    let s = Math.max(-1, Math.min(1, floatArr[i]));
+    out[i] = s<0 ? s*0x8000 : s*0x7FFF;
+  }
+  return out;
+}
+
+function audioBufferToMp3(buffer, kbps){
+  kbps = kbps || 128;
+  const channels = buffer.numberOfChannels;
+  const sampleRate = buffer.sampleRate;
+  const encoder = new lamejs.Mp3Encoder(channels, sampleRate, kbps);
+  const blockSize = 1152;
+
+  let peak = 0;
+  for (let ch=0; ch<channels; ch++){
+    const d = buffer.getChannelData(ch);
+    for (let i=0;i<d.length;i++){ const a = Math.abs(d[i]); if (a>peak) peak = a; }
+  }
+  const gain = peak > 0.98 ? 0.98/peak : 1.0;
+
+  const left = floatTo16BitPCM(applyGain(buffer.getChannelData(0), gain));
+  const right = channels > 1 ? floatTo16BitPCM(applyGain(buffer.getChannelData(1), gain)) : null;
+
+  const mp3Data = [];
+  for (let i=0; i<left.length; i+=blockSize){
+    const leftChunk = left.subarray(i, i+blockSize);
+    let mp3buf;
+    if (right){
+      const rightChunk = right.subarray(i, i+blockSize);
+      mp3buf = encoder.encodeBuffer(leftChunk, rightChunk);
+    } else {
+      mp3buf = encoder.encodeBuffer(leftChunk);
+    }
+    if (mp3buf.length > 0) mp3Data.push(mp3buf);
+  }
+  const endBuf = encoder.flush();
+  if (endBuf.length > 0) mp3Data.push(endBuf);
+
+  return new Blob(mp3Data, {type:'audio/mp3'});
+}
+
+function applyGain(floatArr, gain){
+  if (gain === 1.0) return floatArr;
+  const out = new Float32Array(floatArr.length);
+  for (let i=0;i<floatArr.length;i++) out[i] = floatArr[i]*gain;
+  return out;
+}
+
+function selectedFormat(){
+  return document.querySelector('input[name=fmt]:checked').value;
+}
+
+async function processAudio(){
+  processBtn.disabled = true;
+  processBtn.style.display = 'none';
+  statusEl.style.display = 'block';
+  progressFill.style.width = '0%';
+  statusText.textContent = 'Đang hạ cao độ…';
+  await new Promise(r => setTimeout(r, 30));
+
+  const semitones = parseInt(semitoneSlider.value, 10);
+  const warmth = parseInt(warmthSlider.value, 10);
+  const fmt = selectedFormat();
+
+  const finalAudioBuffer = await buildProcessedAudioBuffer(semitones, warmth);
+
+  afterSlot.innerHTML = '';
+  fallbackNote.style.display = 'none';
+  downloadVideoBtn.hidden = true;
+
+  const baseName = (originalFile.name || 'giong').replace(/\.[^.]+$/, '');
+
+  statusText.textContent = fmt === 'mp3' ? 'Đang mã hoá MP3…' : 'Đang xuất WAV…';
+  await new Promise(r => setTimeout(r, 20));
+
+  let audioBlob, audioExt;
+  if (fmt === 'mp3' && typeof lamejs !== 'undefined'){
+    audioBlob = audioBufferToMp3(finalAudioBuffer, 128);
+    audioExt = 'mp3';
+  } else {
+    audioBlob = audioBufferToWav(finalAudioBuffer);
+    audioExt = 'wav';
+  }
+  const audioUrl = URL.createObjectURL(audioBlob);
+  downloadAudioBtn.href = audioUrl;
+  downloadAudioBtn.download = baseName + '_tram.' + audioExt;
+  downloadAudioBtn.textContent = '⬇ TẢI ÂM THANH (.' + audioExt + ')';
+
+  if (isVideo){
+    try{
+      const videoBlob = await renderVideoWithNewAudio(originalFile, finalAudioBuffer);
+      const vUrl = URL.createObjectURL(videoBlob);
+      const v = document.createElement('video');
+      v.controls = true;
+      v.src = vUrl;
+      afterSlot.appendChild(v);
+
+      downloadVideoBtn.href = vUrl;
+      downloadVideoBtn.download = baseName + '_tram.webm';
+      downloadVideoBtn.hidden = false;
+      downloadAudioBtn.classList.remove('primary');
+      downloadAudioBtn.classList.add('secondary');
+    }catch(err){
+      fallbackNote.style.display = 'block';
+      fallbackNote.textContent = 'Trình duyệt này chưa hỗ trợ xuất video trực tiếp — mình xuất riêng phần âm thanh đã hạ trầm, bạn ghép lại vào video bằng CapCut/Premiere/DaVinci giúp mình nhé.';
+      const a = document.createElement('audio');
+      a.controls = true; a.src = audioUrl;
+      afterSlot.appendChild(a);
+      downloadAudioBtn.classList.add('primary');
+      downloadAudioBtn.classList.remove('secondary');
+    }
+  } else {
+    const a = document.createElement('audio');
+    a.controls = true; a.src = audioUrl;
+    afterSlot.appendChild(a);
+    downloadAudioBtn.classList.add('primary');
+    downloadAudioBtn.classList.remove('secondary');
+  }
+
+  progressBar.style.display = 'none';
+  statusEl.style.display = 'none';
+  resultsEl.style.display = 'block';
+  processBtn.disabled = false;
+  processBtn.style.display = 'block';
+  processBtn.textContent = '▶ XỬ LÝ LẠI';
+}
+
+processBtn.addEventListener('click', processAudio);
+</script>
+</body>
+</html>
